@@ -1,0 +1,83 @@
+import 'package:flutter/material.dart';
+
+void main() {
+  runApp(Example());
+}
+
+class Example extends StatefulWidget {
+  @override
+  State<StatefulWidget> createState() => _ExampleState();
+}
+
+class _ExampleState extends State<Example> {
+  double _progress = 0.10;
+
+  List<double> _locations = [0.10, 0.25, 0.50, 0.75, 1.0];
+  double? _selectedLocation;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        body: Padding(
+          padding: const EdgeInsets.all(10.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              DropdownButton(
+                  items: [
+                    DropdownMenuItem(
+                      child: Text('10 %'),
+                      value: 0.10,
+                    ),
+                    DropdownMenuItem(
+                      child: Text('25 %'),
+                      value: 0.25,
+                    ),
+                    DropdownMenuItem(
+                      child: Text('50 %'),
+                      value: 0.50,
+                    ),
+                    DropdownMenuItem(
+                      child: Text('75 %'),
+                      value: 0.75,
+                    ),
+                    DropdownMenuItem(
+                      child: Text('100 %'),
+                      value: 1.0,
+                    )
+                  ],
+                  value: _selectedLocation,
+                  onChanged: (newValue) {
+                    setState(() {
+                      _selectedLocation = double.parse(newValue.toString());
+                      _progress = double.parse(newValue.toString());
+                    });
+                  }),
+              //just for practice
+              // DropdownButton(
+              //   hint: Text('Please choose a Percentage'),
+              //   value: _selectedLocation,
+              //   onChanged: (newValue) {
+              //     setState(() {
+              //       _selectedLocation = double.parse(newValue.toString());
+              //       _progress = _selectedLocation!;
+              //     });
+              //   },
+              //   items: _locations.map((location) {
+              //     return DropdownMenuItem(
+              //       child: new Text(location.toString()),
+              //       value: location,
+              //     );
+              //   }).toList(),
+              // ),
+              LinearProgressIndicator(
+                value: _progress,
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

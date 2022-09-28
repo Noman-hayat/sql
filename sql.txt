@@ -1,0 +1,281 @@
+
+//HomeScreen UI
+import 'package:flutter/material.dart';
+import 'package:todo/cardata.dart';
+
+import 'package:todo/model/dbmodel.dart';
+import 'package:todo/sqlite/Database.dart';
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({Key? key}) : super(key: key);
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  TextEditingController titlecont = TextEditingController();
+  TextEditingController subtitlecont = TextEditingController();
+  List<DataModel> datas = [];
+  bool fetch = true;
+  int currentindex = 0;
+  late Db db;
+  @override
+  void initState() {
+    super.initState();
+    db = Db();
+    getData();
+  }
+
+  void getData() async {
+    datas = await db.getdata();
+    setState(() {
+      fetch = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Todo List SQflite'),
+        centerTitle: true,
+      ),
+      body: fetch
+          ? Center(
+              child: CircularProgressIndicator(),
+            )
+          : ListView.builder(
+              itemCount: datas.length,
+              itemBuilder: (context, index) {
+                return CartData(
+                  data: datas[index],
+                  edit: edit,
+                  index: index,
+                  delete: delete,
+                );
+              }),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          showMyDialog();
+        },
+        child: Icon(Icons.add),
+      ),
+    );
+  }
+
+  void showMyDialog() async {
+    return showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            contentPadding: EdgeInsets.all(14),
+            content: Container(
+              height: 150,
+              child: Column(
+                children: [
+                  TextFormField(
+                    controller: titlecont,
+                    decoration: InputDecoration(labelText: 'Title'),
+                  ),
+                  SizedBox(
+                    height: 5,
+                  ),
+                  TextFormField(
+                    controller: subtitlecont,
+                    decoration: InputDecoration(labelText: 'Subtitle'),
+                  )
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () {
+                    DataModel datalocal = DataModel(
+                        title: titlecont.text, subtitle: subtitlecont.text);
+                    db.insertData(datalocal);
+                    datalocal.id = datas[datas.length - 1].id! + 1;
+                    setState(() {
+                      datas.add(datalocal);
+                    });
+                    titlecont.clear();
+                    subtitlecont.clear();
+                    Navigator.pop(context);
+                  },
+                  child: Text('Save'))
+            ],
+          );
+        });
+  }
+
+  void showMyDialogUpdate() async {
+    return showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            contentPadding: EdgeInsets.all(14),
+            content: Container(
+              height: 150,
+              child: Column(
+                children: [
+                  TextFormField(
+                    controller: titlecont,
+                    decoration: InputDecoration(labelText: 'Title'),
+                  ),
+                  SizedBox(
+                    height: 5,
+                  ),
+                  TextFormField(
+                    controller: subtitlecont,
+                    decoration: InputDecoration(labelText: 'Subtitle'),
+                  )
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () {
+                    DataModel newdata = datas[currentindex];
+                    newdata.subtitle = subtitlecont.text;
+                    newdata.title = titlecont.text;
+                    db.update(newdata, newdata.id!);
+                    setState(() {});
+                    Navigator.pop(context);
+                  },
+                  child: Text('Update'))
+            ],
+          );
+        });
+  }
+
+  void edit(index) {
+    currentindex = index;
+    titlecont.text = datas[index].title;
+    subtitlecont.text = datas[index].subtitle;
+    showMyDialogUpdate();
+  }
+
+  void delete(int index) {
+    db.delete(datas[index].id!);
+    setState(() {
+      datas.removeAt(index);
+    });
+  }
+}
+//Data to show using card and tile for funtcion
+//import 'package:flutter/material.dart';
+
+import 'package:todo/model/dbmodel.dart';
+
+class CartData extends StatelessWidget {
+  const CartData(
+      {Key? key,
+      required this.data,
+      required this.edit,
+      required this.delete,
+      required this.index})
+      : super(key: key);
+  final DataModel data;
+  final Function edit;
+  final Function delete;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: Colors.blue,
+          child: IconButton(
+            icon: Icon(Icons.edit),
+            color: Colors.white,
+            onPressed: () {
+              edit(index);
+            },
+          ),
+        ),
+        title: Text(data.title),
+        subtitle: Text(data.subtitle),
+        trailing: CircleAvatar(
+          backgroundColor: Colors.red,
+          child: IconButton(
+            icon: Icon(Icons.delete),
+            color: Colors.white,
+            onPressed: () {
+              delete(index);
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+//Database
+
+import 'package:path/path.dart';
+import 'package:sqflite/sqflite.dart';
+
+import '../model/dbmodel.dart';
+
+class Db {
+  Future<Database> initDB() async {
+    String path = await getDatabasesPath();
+    return openDatabase(
+      join(path, "MYDb.db"),
+      onCreate: (database, verison) async {
+        await database.execute("""
+        CREATE TABLE MYTable(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        subtitle TEXT NOT NULL
+        )
+        """);
+      },
+      version: 1,
+    );
+  }
+
+  Future<bool> insertData(DataModel dm) async {
+    final Database db = await initDB();
+    db.insert('MYTABLE', dm.toMap());
+    return true;
+  }
+
+  Future<List<DataModel>> getdata() async {
+    final Database db = await initDB();
+
+    final List<Map<String, Object?>> datas = await db.query('MYTABLE');
+    return datas.map((e) => DataModel.fromMap(e)).toList();
+  }
+
+  Future<void> update(DataModel dm, int id) async {
+    final Database db = await initDB();
+    await db.update('MYTABLE', dm.toMap(), where: 'id=?', whereArgs: [id]);
+  }
+
+  Future<void> delete(int id) async {
+    final Database db = await initDB();
+    await db.delete('MYTABLE', where: 'id=?', whereArgs: [id]);
+  }
+}
+
+//Model class to get data
+
+class DataModel {
+  int? id;
+  String title;
+  String subtitle;
+
+  DataModel({this.id, required this.title, required this.subtitle});
+
+  factory DataModel.fromMap(Map<String, dynamic> json) => DataModel(
+      id: json['id'], title: json['title'], subtitle: json['subtitle']);
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'title': title,
+        'subtitle': subtitle,
+      };
+}
+
